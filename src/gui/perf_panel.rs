@@ -1,6 +1,8 @@
-//! Performance and sensor attributes panel.
+//! Right column: Collapsible accordion panels below DPI settings matching the original Windows driver.
+//! Includes Polling Rate, Mouse Attribute, Power Management, Lift Of Distance,
+//! Key Response Time, Ripple Control, Angle Snap, and Motion Sync.
 
-use eframe::egui::{self, Stroke};
+use eframe::egui::{self, Color32, Stroke, Vec2};
 use crate::gui::theme::*;
 use crate::protocol::{
     constants::{LiftOffDistance, PollingRate},
@@ -8,11 +10,29 @@ use crate::protocol::{
     sensor::SensorConfig,
 };
 
-pub struct PerfPanel;
+pub struct PerfPanel {
+    pub expanded_polling: bool,
+    pub expanded_attribute: bool,
+    pub expanded_power: bool,
+    pub expanded_lod: bool,
+    pub expanded_debounce: bool,
+    pub expanded_ripple: bool,
+    pub expanded_angle_snap: bool,
+    pub expanded_motion_sync: bool,
+}
 
 impl Default for PerfPanel {
     fn default() -> Self {
-        Self
+        Self {
+            expanded_polling: false,
+            expanded_attribute: false,
+            expanded_power: false,
+            expanded_lod: false,
+            expanded_debounce: false,
+            expanded_ripple: false,
+            expanded_angle_snap: false,
+            expanded_motion_sync: false,
+        }
     }
 }
 
@@ -25,125 +45,179 @@ impl PerfPanel {
         polling_rate: &mut PollingRate,
         pending_apply: &mut bool,
     ) {
-        // Section: Polling Rate
-        section_header(ui, "Polling Rate");
-        egui::Frame::none()
-            .fill(COLOR_PANEL_BG)
-            .inner_margin(8.0)
-            .rounding(4.0)
-            .stroke(Stroke::new(1.0, COLOR_BORDER))
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    for &rate in &[
-                        PollingRate::Hz125,
-                        PollingRate::Hz250,
-                        PollingRate::Hz500,
-                        PollingRate::Hz1000,
-                    ] {
-                        let is_selected = *polling_rate == rate;
-                        let text = egui::RichText::new(format!("{}Hz", rate as u16))
-                            .color(if is_selected { COLOR_TEXT_PRIMARY } else { COLOR_TEXT_SECONDARY })
-                            .size(11.5);
-                        if ui
-                            .selectable_label(is_selected, text)
-                            .on_hover_text(rate.label())
-                            .clicked()
-                        {
-                            *polling_rate = rate;
+        ui.spacing_mut().item_spacing = Vec2::new(0.0, 4.0);
+
+        // 1. Polling Rate Settings
+        collapsible_section_header(ui, "Polling Rate Settings", &mut self.expanded_polling);
+        if self.expanded_polling {
+            egui::Frame::none()
+                .fill(COLOR_PANEL_BG)
+                .inner_margin(8.0)
+                .rounding(4.0)
+                .stroke(Stroke::new(1.0, COLOR_BORDER))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        for &rate in &[
+                            PollingRate::Hz125,
+                            PollingRate::Hz250,
+                            PollingRate::Hz500,
+                            PollingRate::Hz1000,
+                        ] {
+                            let is_selected = *polling_rate == rate;
+                            let btn = ui.add_sized(
+                                Vec2::new(52.0, 22.0),
+                                egui::Button::new(
+                                    egui::RichText::new(format!("{}Hz", rate as u16))
+                                        .color(if is_selected { Color32::WHITE } else { COLOR_TEXT_SECONDARY })
+                                        .size(11.0),
+                                )
+                                .fill(if is_selected { COLOR_ACCENT_RED } else { COLOR_CARD_BG }),
+                            );
+                            if btn.clicked() {
+                                *polling_rate = rate;
+                                *pending_apply = true;
+                            }
+                        }
+                    });
+                });
+        }
+
+        // 2. Mouse Attribute
+        collapsible_section_header(ui, "Mouse Attribute", &mut self.expanded_attribute);
+        if self.expanded_attribute {
+            egui::Frame::none()
+                .fill(COLOR_PANEL_BG)
+                .inner_margin(8.0)
+                .rounding(4.0)
+                .stroke(Stroke::new(1.0, COLOR_BORDER))
+                .show(ui, |ui| {
+                    ui.label(
+                        egui::RichText::new("PAW3395 Optical Sensor (26,000 DPI, 650 IPS, 50G)")
+                            .color(COLOR_TEXT_SECONDARY)
+                            .size(11.0),
+                    );
+                });
+        }
+
+        // 3. Power Management
+        collapsible_section_header(ui, "Power Management", &mut self.expanded_power);
+        if self.expanded_power {
+            egui::Frame::none()
+                .fill(COLOR_PANEL_BG)
+                .inner_margin(8.0)
+                .rounding(4.0)
+                .stroke(Stroke::new(1.0, COLOR_BORDER))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new("Sleep:").size(11.5));
+                        for &mins in &[1.0_f32, 3.0, 5.0, 10.0] {
+                            let is_sel = (power.sleep_minutes - mins).abs() < 0.1;
+                            let btn = ui.add_sized(
+                                Vec2::new(46.0, 20.0),
+                                egui::Button::new(
+                                    egui::RichText::new(format!("{:.0}m", mins))
+                                        .size(10.5)
+                                        .color(if is_sel { Color32::WHITE } else { COLOR_TEXT_SECONDARY }),
+                                )
+                                .fill(if is_sel { COLOR_ACCENT_RED } else { COLOR_CARD_BG }),
+                            );
+                            if btn.clicked() {
+                                power.sleep_minutes = mins;
+                                *pending_apply = true;
+                            }
+                        }
+                    });
+                });
+        }
+
+        // 4. Lift Of Distance
+        collapsible_section_header(ui, "Lift Of Distance", &mut self.expanded_lod);
+        if self.expanded_lod {
+            egui::Frame::none()
+                .fill(COLOR_PANEL_BG)
+                .inner_margin(8.0)
+                .rounding(4.0)
+                .stroke(Stroke::new(1.0, COLOR_BORDER))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.radio(sensor.lod == LiftOffDistance::OneMm, "1 mm").clicked() {
+                            sensor.lod = LiftOffDistance::OneMm;
                             *pending_apply = true;
                         }
-                    }
+                        if ui.radio(sensor.lod == LiftOffDistance::TwoMm, "2 mm").clicked() {
+                            sensor.lod = LiftOffDistance::TwoMm;
+                            *pending_apply = true;
+                        }
+                    });
                 });
-            });
+        }
 
-        ui.add_space(8.0);
-
-        // Section: Sensor & Performance
-        section_header(ui, "Performance & Sensor");
-        egui::Frame::none()
-            .fill(COLOR_PANEL_BG)
-            .inner_margin(8.0)
-            .rounding(4.0)
-            .stroke(Stroke::new(1.0, COLOR_BORDER))
-            .show(ui, |ui| {
-                // Lift-off distance (1mm / 2mm)
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("Lift Off Distance:").size(12.0));
-                    if ui.radio(sensor.lod == LiftOffDistance::OneMm, "1 mm").clicked() {
-                        sensor.lod = LiftOffDistance::OneMm;
-                        *pending_apply = true;
-                    }
-                    if ui.radio(sensor.lod == LiftOffDistance::TwoMm, "2 mm").clicked() {
-                        sensor.lod = LiftOffDistance::TwoMm;
-                        *pending_apply = true;
-                    }
+        // 5. Key Response Time
+        collapsible_section_header(ui, "Key Response Time", &mut self.expanded_debounce);
+        if self.expanded_debounce {
+            egui::Frame::none()
+                .fill(COLOR_PANEL_BG)
+                .inner_margin(8.0)
+                .rounding(4.0)
+                .stroke(Stroke::new(1.0, COLOR_BORDER))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new("Debounce:").size(11.5));
+                        let mut val = power.key_debounce_ms as f64;
+                        if ui
+                            .add(egui::Slider::new(&mut val, 2.0..=50.0).step_by(2.0).suffix(" ms"))
+                            .changed()
+                        {
+                            power.key_debounce_ms = val as u8;
+                            *pending_apply = true;
+                        }
+                    });
                 });
+        }
 
-                ui.add_space(4.0);
-
-                // Key Debounce Time (2 .. 50 ms)
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("Debounce:").size(12.0));
-                    let mut debounce_val = power.key_debounce_ms as f64;
-                    if ui
-                        .add(egui::Slider::new(&mut debounce_val, 2.0..=50.0).step_by(2.0).suffix(" ms"))
-                        .changed()
-                    {
-                        power.key_debounce_ms = debounce_val as u8;
-                        *pending_apply = true;
-                    }
-                });
-
-                ui.add_space(4.0);
-
-                // Sleep Time (0.5 .. 30 min)
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("Sleep Time:").size(12.0));
-                    let mut sleep_val = power.sleep_minutes as f64;
-                    if ui
-                        .add(egui::Slider::new(&mut sleep_val, 0.5..=30.0).step_by(0.5).suffix(" min"))
-                        .changed()
-                    {
-                        power.sleep_minutes = sleep_val as f32;
+        // 6. Ripple Control
+        collapsible_section_header(ui, "Ripple Control", &mut self.expanded_ripple);
+        if self.expanded_ripple {
+            egui::Frame::none()
+                .fill(COLOR_PANEL_BG)
+                .inner_margin(8.0)
+                .rounding(4.0)
+                .stroke(Stroke::new(1.0, COLOR_BORDER))
+                .show(ui, |ui| {
+                    if ui.checkbox(&mut sensor.ripple_control, "Enable Ripple Control").changed() {
                         *pending_apply = true;
                     }
                 });
+        }
 
-                ui.add_space(4.0);
-
-                // Deep Sleep Time (1 .. 60 min)
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("Deep Sleep:").size(12.0));
-                    let mut deep_val = power.deep_sleep_minutes as f64;
-                    if ui
-                        .add(egui::Slider::new(&mut deep_val, 1.0..=60.0).step_by(1.0).suffix(" min"))
-                        .changed()
-                    {
-                        power.deep_sleep_minutes = deep_val as u8;
+        // 7. Angle Snap
+        collapsible_section_header(ui, "Angle Snap", &mut self.expanded_angle_snap);
+        if self.expanded_angle_snap {
+            egui::Frame::none()
+                .fill(COLOR_PANEL_BG)
+                .inner_margin(8.0)
+                .rounding(4.0)
+                .stroke(Stroke::new(1.0, COLOR_BORDER))
+                .show(ui, |ui| {
+                    if ui.checkbox(&mut sensor.angle_snap, "Enable Angle Snap").changed() {
                         *pending_apply = true;
                     }
                 });
+        }
 
-                ui.add_space(6.0);
-                ui.separator();
-                ui.add_space(4.0);
-
-                // Toggles: Ripple, Angle Snap, Motion Sync
-                ui.horizontal(|ui| {
-                    if ui.checkbox(&mut sensor.ripple_control, "Ripple Control").changed() {
+        // 8. Motion Sync
+        collapsible_section_header(ui, "Motion Sync", &mut self.expanded_motion_sync);
+        if self.expanded_motion_sync {
+            egui::Frame::none()
+                .fill(COLOR_PANEL_BG)
+                .inner_margin(8.0)
+                .rounding(4.0)
+                .stroke(Stroke::new(1.0, COLOR_BORDER))
+                .show(ui, |ui| {
+                    if ui.checkbox(&mut sensor.motion_sync, "Enable Motion Sync").changed() {
                         *pending_apply = true;
                     }
                 });
-                ui.horizontal(|ui| {
-                    if ui.checkbox(&mut sensor.angle_snap, "Angle Snap").changed() {
-                        *pending_apply = true;
-                    }
-                });
-                ui.horizontal(|ui| {
-                    if ui.checkbox(&mut sensor.motion_sync, "Motion Sync").changed() {
-                        *pending_apply = true;
-                    }
-                });
-            });
+        }
     }
 }

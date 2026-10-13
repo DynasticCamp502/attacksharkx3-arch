@@ -1,4 +1,4 @@
-//! Central column displaying interactive representation of the Attack Shark X3 mouse.
+//! Central column: Attack Shark X3 mouse visualization with authentic image and Device Sleep overlay.
 
 use eframe::egui::{self, Color32, Pos2, Rect, Rounding, Stroke, Vec2};
 use crate::device::ConnectionType;
@@ -6,164 +6,115 @@ use crate::gui::theme::*;
 
 pub struct MouseView {
     pub selected_button: Option<usize>,
+    mouse_texture: Option<egui::TextureHandle>,
 }
 
 impl Default for MouseView {
     fn default() -> Self {
-        Self { selected_button: None }
+        Self {
+            selected_button: None,
+            mouse_texture: None,
+        }
     }
 }
 
 impl MouseView {
+    fn ensure_texture(&mut self, ctx: &egui::Context) -> Option<&egui::TextureHandle> {
+        if self.mouse_texture.is_none() {
+            let bytes = include_bytes!("../../assets/images/ms_1/mouse.png");
+            if let Ok(color_img) = load_color_image_from_bytes(bytes) {
+                self.mouse_texture = Some(ctx.load_texture(
+                    "mouse_view_img",
+                    color_img,
+                    egui::TextureOptions::LINEAR,
+                ));
+            }
+        }
+        self.mouse_texture.as_ref()
+    }
+
     pub fn show(&mut self, ui: &mut egui::Ui, conn: ConnectionType) {
+        let texture_opt = self.ensure_texture(ui.ctx()).cloned();
+
         ui.vertical_centered(|ui| {
-            // Connection Indicator Bar
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Link:").color(COLOR_TEXT_MUTED).size(12.0));
-                let (badge_color, badge_text) = match conn {
-                    ConnectionType::Wireless24G => (COLOR_CONNECTED_GREEN, "2.4G Wireless"),
-                    ConnectionType::WiredUsb => (COLOR_CONNECTED_GREEN, "Wired USB"),
-                    ConnectionType::PermissionDenied => (COLOR_ACCENT_RED, "Access Denied (udev rule needed)"),
-                    ConnectionType::Disconnected => (COLOR_TEXT_MUTED, "Not Connected"),
-                };
-                ui.label(
-                    egui::RichText::new(badge_text)
-                        .color(badge_color)
-                        .strong()
-                        .size(12.0),
-                );
-            });
-            ui.add_space(12.0);
+            ui.add_space(20.0);
 
-            // Responsive mouse sizing based on available width
-            let col_w = ui.available_width();
-            let scale = (col_w / 260.0).clamp(0.95, 1.35);
-            let mouse_w = 175.0 * scale;
-            let mouse_h = 315.0 * scale;
+            let mouse_w = 215.0;
+            let mouse_h = 398.0;
 
-            let available_size = Vec2::new(col_w, mouse_h + 30.0);
-            let (rect, response) = ui.allocate_exact_size(available_size, egui::Sense::click_and_drag());
+            let (rect, resp) = ui.allocate_exact_size(
+                Vec2::new(mouse_w, mouse_h),
+                egui::Sense::click(),
+            );
+
             let painter = ui.painter_at(rect);
 
-            // Draw Mouse Silhouette
-            let mouse_body = Rect::from_center_size(rect.center(), Vec2::new(mouse_w, mouse_h));
-            painter.rect_filled(
-                mouse_body,
-                Rounding {
-                    nw: 50.0 * scale,
-                    ne: 50.0 * scale,
-                    sw: 65.0 * scale,
-                    se: 65.0 * scale,
-                },
-                Color32::from_rgb(0x1B, 0x1B, 0x1B),
-            );
-            painter.rect_stroke(
-                mouse_body,
-                Rounding {
-                    nw: 50.0 * scale,
-                    ne: 50.0 * scale,
-                    sw: 65.0 * scale,
-                    se: 65.0 * scale,
-                },
-                Stroke::new(1.5_f32, COLOR_BORDER),
-            );
+            // Draw the official Attack Shark X3 mouse image
+            if let Some(tex) = texture_opt {
+                painter.image(
+                    tex.id(),
+                    rect,
+                    Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
+                    Color32::WHITE,
+                );
+            }
 
-            // Center scroll wheel
-            let wheel_rect = Rect::from_center_size(
-                Pos2::new(mouse_body.center().x, mouse_body.min.y + (75.0 * scale)),
-                Vec2::new(20.0 * scale, 48.0 * scale),
-            );
-            let wheel_hover = self.selected_button == Some(3);
-            painter.rect_filled(
-                wheel_rect,
-                Rounding::same(6.0 * scale),
-                if wheel_hover { COLOR_ACCENT_RED } else { Color32::from_rgb(0x35, 0x35, 0x35) },
-            );
-            painter.rect_stroke(wheel_rect, Rounding::same(6.0 * scale), Stroke::new(1.0_f32, COLOR_BORDER));
+            // Button click detection
+            if resp.clicked() {
+                if let Some(pos) = resp.interact_pointer_pos() {
+                    let rel_x = pos.x - rect.min.x;
+                    let rel_y = pos.y - rect.min.y;
 
-            // Left Button (1)
-            let left_btn = Rect::from_min_max(
-                Pos2::new(mouse_body.min.x + (8.0 * scale), mouse_body.min.y + (12.0 * scale)),
-                Pos2::new(mouse_body.center().x - (14.0 * scale), mouse_body.min.y + (130.0 * scale)),
-            );
-            let left_hover = self.selected_button == Some(1);
-            painter.rect_stroke(
-                left_btn,
-                Rounding { nw: 36.0 * scale, ne: 4.0 * scale, sw: 4.0 * scale, se: 4.0 * scale },
-                Stroke::new(if left_hover { 2.0_f32 } else { 1.0_f32 }, if left_hover { COLOR_ACCENT_RED } else { COLOR_BORDER }),
-            );
-
-            // Right Button (2)
-            let right_btn = Rect::from_min_max(
-                Pos2::new(mouse_body.center().x + (14.0 * scale), mouse_body.min.y + (12.0 * scale)),
-                Pos2::new(mouse_body.max.x - (8.0 * scale), mouse_body.min.y + (130.0 * scale)),
-            );
-            let right_hover = self.selected_button == Some(2);
-            painter.rect_stroke(
-                right_btn,
-                Rounding { nw: 4.0 * scale, ne: 36.0 * scale, sw: 4.0 * scale, se: 4.0 * scale },
-                Stroke::new(if right_hover { 2.0_f32 } else { 1.0_f32 }, if right_hover { COLOR_ACCENT_RED } else { COLOR_BORDER }),
-            );
-
-            // DPI Switch Button (center, below wheel)
-            let dpi_btn = Rect::from_center_size(
-                Pos2::new(mouse_body.center().x, mouse_body.min.y + (120.0 * scale)),
-                Vec2::new(18.0 * scale, 22.0 * scale),
-            );
-            painter.rect_filled(dpi_btn, Rounding::same(4.0 * scale), Color32::from_rgb(0x28, 0x28, 0x28));
-            painter.rect_stroke(dpi_btn, Rounding::same(4.0 * scale), Stroke::new(1.0_f32, COLOR_BORDER));
-
-            // Forward Button (4) - Left side
-            let fwd_btn = Rect::from_min_max(
-                Pos2::new(mouse_body.min.x - (6.0 * scale), mouse_body.min.y + (115.0 * scale)),
-                Pos2::new(mouse_body.min.x + (3.0 * scale), mouse_body.min.y + (145.0 * scale)),
-            );
-            let fwd_hover = self.selected_button == Some(4);
-            painter.rect_filled(
-                fwd_btn,
-                Rounding::same(3.0 * scale),
-                if fwd_hover { COLOR_ACCENT_RED } else { Color32::from_rgb(0x3A, 0x3A, 0x3A) },
-            );
-
-            // Backward Button (5) - Left side
-            let back_btn = Rect::from_min_max(
-                Pos2::new(mouse_body.min.x - (6.0 * scale), mouse_body.min.y + (155.0 * scale)),
-                Pos2::new(mouse_body.min.x + (3.0 * scale), mouse_body.min.y + (185.0 * scale)),
-            );
-            let back_hover = self.selected_button == Some(5);
-            painter.rect_filled(
-                back_btn,
-                Rounding::same(3.0 * scale),
-                if back_hover { COLOR_ACCENT_RED } else { Color32::from_rgb(0x3A, 0x3A, 0x3A) },
-            );
-
-            // Attack Shark logo mark on the palm rest
-            painter.text(
-                Pos2::new(mouse_body.center().x, mouse_body.center().y + (75.0 * scale)),
-                egui::Align2::CENTER_CENTER,
-                "ATTACK SHARK",
-                egui::FontId::proportional(11.0 * scale),
-                Color32::from_rgb(0x55, 0x55, 0x55),
-            );
-            painter.text(
-                Pos2::new(mouse_body.center().x, mouse_body.center().y + (93.0 * scale)),
-                egui::Align2::CENTER_CENTER,
-                "X3",
-                egui::FontId::proportional(14.0 * scale),
-                COLOR_ACCENT_RED,
-            );
-
-            if response.clicked() {
-                if let Some(pos) = response.interact_pointer_pos() {
-                    if left_btn.contains(pos) { self.selected_button = Some(1); }
-                    else if right_btn.contains(pos) { self.selected_button = Some(2); }
-                    else if wheel_rect.contains(pos) { self.selected_button = Some(3); }
-                    else if fwd_btn.contains(pos) { self.selected_button = Some(4); }
-                    else if back_btn.contains(pos) { self.selected_button = Some(5); }
-                    else { self.selected_button = None; }
+                    // Button 1 (Left click) ~ (40..95, 45..105)
+                    if (40.0..=95.0).contains(&rel_x) && (45.0..=105.0).contains(&rel_y) {
+                        self.selected_button = Some(1);
+                    }
+                    // Button 2 (Right click) ~ (120..175, 45..105)
+                    else if (120.0..=175.0).contains(&rel_x) && (45.0..=105.0).contains(&rel_y) {
+                        self.selected_button = Some(2);
+                    }
+                    // Button 3 (Middle wheel) ~ (95..120, 45..105)
+                    else if (95.0..=120.0).contains(&rel_x) && (45.0..=105.0).contains(&rel_y) {
+                        self.selected_button = Some(3);
+                    }
+                    // Button 4 (Forward side) ~ (0..35, 120..165)
+                    else if (0.0..=35.0).contains(&rel_x) && (120.0..=165.0).contains(&rel_y) {
+                        self.selected_button = Some(4);
+                    }
+                    // Button 5 (Backward side) ~ (0..35, 175..220)
+                    else if (0.0..=35.0).contains(&rel_x) && (175.0..=220.0).contains(&rel_y) {
+                        self.selected_button = Some(5);
+                    }
                 }
             }
+
+            // "Device Sleep!" Overlay across the mouse
+            let overlay_text = match conn {
+                ConnectionType::Wireless24G => "Device Connected",
+                ConnectionType::WiredUsb => "Wired Mode",
+                ConnectionType::PermissionDenied => "Access Denied",
+                ConnectionType::Disconnected => "Device Sleep!",
+            };
+
+            let overlay_pos = Pos2::new(rect.center().x, rect.min.y + 175.0);
+            let pill_rect = Rect::from_center_size(overlay_pos, Vec2::new(150.0, 32.0));
+            painter.rect_filled(
+                pill_rect,
+                Rounding::same(6.0),
+                Color32::from_rgba_premultiplied(16, 16, 16, 190),
+            );
+            painter.rect_stroke(
+                pill_rect,
+                Rounding::same(6.0),
+                Stroke::new(1.0, Color32::from_rgba_premultiplied(90, 90, 90, 120)),
+            );
+            painter.text(
+                overlay_pos,
+                egui::Align2::CENTER_CENTER,
+                overlay_text,
+                egui::FontId::proportional(17.0),
+                Color32::WHITE,
+            );
         });
     }
 }

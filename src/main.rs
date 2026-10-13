@@ -1,4 +1,4 @@
-//! Attack Shark X3 Linux Configuration Driver and GUI Binary Entry Point.
+//! Attack Shark X3 Configuration Driver and GUI Binary Entry Point.
 
 use anyhow::Result;
 use attack_shark_x3::AttackSharkApp;
@@ -13,13 +13,13 @@ fn main() -> Result<()> {
         )
         .init();
 
-    info!("Starting Attack Shark X3 Linux configuration tool v{}", env!("CARGO_PKG_VERSION"));
+    info!("Starting Attack Shark X3 configuration tool v{}", env!("CARGO_PKG_VERSION"));
 
     let native_options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
-            .with_title("Attack Shark X3 — Linux Mouse Configuration")
-            .with_inner_size(Vec2::new(960.0, 640.0))
-            .with_min_inner_size(Vec2::new(880.0, 560.0)),
+            .with_title("ATTACK SHARK")
+            .with_inner_size(Vec2::new(1127.0, 760.0))
+            .with_min_inner_size(Vec2::new(960.0, 680.0)),
         ..Default::default()
     };
 

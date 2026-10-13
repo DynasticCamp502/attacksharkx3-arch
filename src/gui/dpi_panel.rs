@@ -1,27 +1,25 @@
-//! Right column: Advanced DPI stages configuration panel with custom values,
-//! stage adding/removing, enable/disable toggles, RGB color picker, quick presets,
-//! and dedicated custom DPI input field.
+//! Right column: DPI Settings panel matching the official Attack Shark X3 Windows driver.
+//! Features 6 vertical DPI sliders, editable direct input fields (e.g. click 800 -> type 900 -> Apply),
+//! stage radio indicators, and the centered Apply button.
 
-use eframe::egui::{self, Color32, Stroke, Vec2};
+use eframe::egui::{self, Color32, Pos2, Rect, Rounding, Stroke, Vec2};
 use crate::dpi::clamp_dpi;
 use crate::gui::theme::*;
-use crate::protocol::constants::DPI_SLOTS;
 use crate::protocol::sensor::SensorConfig;
 
 pub struct DpiPanel {
+    pub is_expanded: bool,
     pub pending_apply: bool,
-    /// Persistent text edit buffers for each DPI stage
+    /// Buffers for each stage's text input field
     pub text_buffers: Vec<String>,
-    /// Buffer for dedicated custom DPI input
-    pub custom_input: String,
 }
 
 impl Default for DpiPanel {
     fn default() -> Self {
         Self {
+            is_expanded: true,
             pending_apply: false,
             text_buffers: Vec::new(),
-            custom_input: String::new(),
         }
     }
 }
@@ -35,374 +33,242 @@ impl DpiPanel {
                 .map(|&dpi| format!("{}", dpi))
                 .collect();
         }
-
-        let active_idx = sensor.active_stage.min(sensor.dpi_stages.len().saturating_sub(1));
-        if self.custom_input.is_empty() {
-            if let Some(&dpi) = sensor.dpi_stages.get(active_idx) {
-                self.custom_input = format!("{}", dpi);
-            }
-        }
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui, sensor: &mut SensorConfig) {
         self.sync_buffers(sensor);
 
-        section_header(ui, "DPI Settings");
+        // Header matching original Attack Shark title bar
+        collapsible_section_header(ui, "DPI Settings", &mut self.is_expanded);
+
+        if !self.is_expanded {
+            return;
+        }
+
+        ui.add_space(2.0);
 
         egui::Frame::none()
             .fill(COLOR_PANEL_BG)
-            .inner_margin(10.0)
-            .rounding(6.0)
-            .stroke(Stroke::new(1.0_f32, COLOR_BORDER))
+            .inner_margin(8.0)
+            .rounding(4.0)
+            .stroke(Stroke::new(1.0, COLOR_BORDER))
             .show(ui, |ui| {
-                let active_idx = sensor.active_stage.min(sensor.dpi_stages.len().saturating_sub(1));
-
-                // Top controls bar: Add/Remove Stage & Active Stage summary
-                ui.horizontal(|ui| {
-                    ui.label(
-                        egui::RichText::new(format!(
-                            "Stages: {} / {} (Active: Stage {})",
-                            sensor.dpi_stages.len(),
-                            DPI_SLOTS,
-                            active_idx + 1
-                        ))
-                        .color(COLOR_TEXT_SECONDARY)
-                        .size(12.0),
-                    );
-
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        // Add stage button
-                        if sensor.dpi_stages.len() < DPI_SLOTS {
-                            if ui
-                                .button("+ Add Stage")
-                                .on_hover_text("Add a new custom DPI stage (up to 8)")
-                                .clicked()
-                            {
-                                let last_dpi = sensor.dpi_stages.last().copied().unwrap_or(1600);
-                                let new_dpi = clamp_dpi((last_dpi + 800).min(26000));
-                                sensor.dpi_stages.push(new_dpi);
-                                self.text_buffers.push(format!("{}", new_dpi));
-
-                                let default_colors = [
-                                    [255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 0],
-                                    [0, 255, 255], [255, 0, 255], [255, 64, 0], [255, 255, 255],
-                                ];
-                                let idx = sensor.dpi_stages.len() - 1;
-                                if sensor.colors.len() <= idx {
-                                    sensor.colors.push(default_colors[idx % default_colors.len()]);
-                                }
-
-                                let mut mask = sensor.enabled_mask.unwrap_or(0);
-                                mask |= 1 << idx;
-                                sensor.enabled_mask = Some(mask);
-                                self.pending_apply = true;
-                            }
-                        }
-
-                        // Remove stage button
-                        if sensor.dpi_stages.len() > 1 {
-                            if ui
-                                .button("- Remove Stage")
-                                .on_hover_text("Remove the last DPI stage")
-                                .clicked()
-                            {
-                                let idx = sensor.dpi_stages.len() - 1;
-                                sensor.dpi_stages.pop();
-                                self.text_buffers.pop();
-                                if sensor.colors.len() > sensor.dpi_stages.len() {
-                                    sensor.colors.pop();
-                                }
-                                if sensor.active_stage >= sensor.dpi_stages.len() {
-                                    sensor.active_stage = sensor.dpi_stages.len() - 1;
-                                }
-                                if let Some(ref mut mask) = sensor.enabled_mask {
-                                    *mask &= !(1 << idx);
-                                }
-                                self.pending_apply = true;
-                            }
-                        }
-                    });
-                });
-
-                ui.add_space(8.0);
-
-                // Dedicated Custom DPI Input for Active Stage
-                ui.horizontal(|ui| {
-                    ui.label(
-                        egui::RichText::new("Custom DPI:")
-                            .color(COLOR_TEXT_PRIMARY)
-                            .strong()
-                            .size(12.0),
-                    );
-
-                    let edit_resp = ui.add_sized(
-                        [80.0, 24.0],
-                        egui::TextEdit::singleline(&mut self.custom_input)
-                            .font(egui::FontId::monospace(12.0))
-                            .desired_width(80.0)
-                            .hint_text("50-26000"),
-                    );
-
-                    let is_custom_focused = edit_resp.has_focus();
-                    let enter_pressed = is_custom_focused && ui.input(|i| i.key_pressed(egui::Key::Enter));
-                    let set_clicked = ui
-                        .add_sized(
-                            [46.0, 24.0],
-                            egui::Button::new(
-                                egui::RichText::new("Set")
-                                    .color(Color32::WHITE)
-                                    .strong(),
-                            )
-                            .fill(COLOR_ACCENT_RED),
-                        )
-                        .on_hover_text("Apply custom DPI to active stage")
-                        .clicked();
-
-                    if set_clicked || enter_pressed || edit_resp.lost_focus() {
-                        if let Ok(val) = self.custom_input.trim().parse::<u32>() {
-                            let clamped = clamp_dpi(val);
-                            sensor.dpi_stages[active_idx] = clamped;
-                            self.custom_input = format!("{}", clamped);
-                            if let Some(buf) = self.text_buffers.get_mut(active_idx) {
-                                *buf = format!("{}", clamped);
-                            }
-                            self.pending_apply = true;
-                        } else if !is_custom_focused {
-                            self.custom_input = format!("{}", sensor.dpi_stages[active_idx]);
-                        }
-                    } else if !is_custom_focused {
-                        // Keep synced if user is not actively editing
-                        self.custom_input = format!("{}", sensor.dpi_stages[active_idx]);
-                    }
-
-                    // Quick adjustments
-                    if ui.small_button("-50").on_hover_text("Decrease 50 DPI").clicked() {
-                        let cur = sensor.dpi_stages[active_idx];
-                        let new_dpi = clamp_dpi(cur.saturating_sub(50));
-                        sensor.dpi_stages[active_idx] = new_dpi;
-                        self.custom_input = format!("{}", new_dpi);
-                        if let Some(buf) = self.text_buffers.get_mut(active_idx) {
-                            *buf = format!("{}", new_dpi);
-                        }
-                        self.pending_apply = true;
-                    }
-                    if ui.small_button("+50").on_hover_text("Increase 50 DPI").clicked() {
-                        let cur = sensor.dpi_stages[active_idx];
-                        let new_dpi = clamp_dpi((cur + 50).min(26000));
-                        sensor.dpi_stages[active_idx] = new_dpi;
-                        self.custom_input = format!("{}", new_dpi);
-                        if let Some(buf) = self.text_buffers.get_mut(active_idx) {
-                            *buf = format!("{}", new_dpi);
-                        }
-                        self.pending_apply = true;
-                    }
-                });
-
-                ui.add_space(6.0);
-
-                // Quick presets row
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(egui::RichText::new("Presets:").size(11.0).color(COLOR_TEXT_MUTED));
-                    for &preset in &[400, 800, 1200, 1600, 2400, 3200, 6400, 12000, 26000] {
-                        let is_current = sensor.dpi_stages[active_idx] == preset;
-                        let text = egui::RichText::new(format!("{}", preset))
-                            .size(10.5)
-                            .color(if is_current { Color32::WHITE } else { COLOR_TEXT_SECONDARY });
-
-                        if ui
-                            .selectable_label(is_current, text)
-                            .on_hover_text(format!("Set Active Stage {} to {} DPI", active_idx + 1, preset))
-                            .clicked()
-                        {
-                            sensor.dpi_stages[active_idx] = preset;
-                            self.custom_input = format!("{}", preset);
-                            if let Some(buf) = self.text_buffers.get_mut(active_idx) {
-                                *buf = format!("{}", preset);
-                            }
-                            self.pending_apply = true;
-                        }
-                    }
-                });
-
-                ui.add_space(8.0);
-                ui.separator();
-                ui.add_space(8.0);
-
-                // Responsive Stage Cards Grid
-                let stages_count = sensor.dpi_stages.len();
+                let stage_count = sensor.dpi_stages.len().min(6);
                 let avail_w = ui.available_width();
-                let col_width = ((avail_w - (stages_count as f32 * 8.0)) / stages_count as f32)
-                    .clamp(48.0, 85.0);
+                let col_w = (avail_w / stage_count as f32).floor();
+                let slider_h = 120.0;
+                let track_w = 7.0;
+                let thumb_radius = 6.5;
 
-                let mut mask = sensor.enabled_mask.unwrap_or_else(|| ((1 << stages_count) - 1) as u8);
-
+                // 6 Columns for DPI Stages
                 ui.horizontal(|ui| {
-                    for i in 0..stages_count {
+                    ui.spacing_mut().item_spacing = Vec2::new(0.0, 0.0);
+
+                    for i in 0..stage_count {
                         let is_active = sensor.active_stage == i;
-                        let is_enabled = (mask & (1 << i)) != 0;
+                        let current_dpi = sensor.dpi_stages[i];
 
                         ui.vertical(|ui| {
-                            ui.set_width(col_width);
+                            ui.set_width(col_w);
 
-                            // Header with Stage Number & Radio Selection
-                            ui.horizontal(|ui| {
-                                if ui
-                                    .radio(is_active, format!("{}", i + 1))
-                                    .on_hover_text(format!("Select Stage {} as active DPI", i + 1))
-                                    .clicked()
-                                {
-                                    sensor.active_stage = i;
-                                    self.custom_input = format!("{}", sensor.dpi_stages[i]);
-                                    self.pending_apply = true;
-                                }
+                            // 1. Top label: 26000
+                            ui.vertical_centered(|ui| {
+                                ui.label(
+                                    egui::RichText::new("26000")
+                                        .size(9.5)
+                                        .color(COLOR_TEXT_MUTED),
+                                );
                             });
 
-                            // Enabled checkbox
-                            let mut checked = is_enabled;
-                            if ui
-                                .checkbox(&mut checked, "On")
-                                .on_hover_text("Enable or disable this DPI stage")
-                                .changed()
-                            {
-                                if checked {
-                                    mask |= 1 << i;
-                                } else if mask.count_ones() > 1 {
-                                    mask &= !(1 << i);
-                                }
-                                sensor.enabled_mask = Some(mask);
-                                self.pending_apply = true;
-                            }
+                            ui.add_space(3.0);
 
-                            ui.add_space(2.0);
+                            // 2. Custom Vertical Slider
+                            let (slider_rect, slider_resp) = ui.allocate_exact_size(
+                                Vec2::new(col_w, slider_h),
+                                egui::Sense::click_and_drag(),
+                            );
 
-                            // Color Picker for stage indicator
-                            if let Some(rgb) = sensor.colors.get_mut(i) {
-                                ui.horizontal(|ui| {
-                                    if ui.color_edit_button_srgb(rgb).changed() {
-                                        self.pending_apply = true;
-                                    }
-                                });
-                            }
+                            let painter = ui.painter_at(slider_rect);
+                            let track_x = slider_rect.center().x;
+                            let track_top = slider_rect.min.y + thumb_radius;
+                            let track_bottom = slider_rect.max.y - thumb_radius;
+                            let usable_track_h = (track_bottom - track_top).max(1.0);
 
-                            ui.add_space(4.0);
+                            // Normalized value (0.0 at bottom = 50 DPI, 1.0 at top = 26000 DPI)
+                            let mut norm = ((current_dpi as f32 - 50.0) / (26000.0 - 50.0)).clamp(0.0, 1.0);
 
-                            // Max indicator
-                            ui.label(egui::RichText::new("26k").size(9.0).color(COLOR_TEXT_MUTED));
-
-                            // Vertical Slider
-                            let current_dpi = sensor.dpi_stages[i];
-                            let mut slider_val = current_dpi as f64;
-                            let slider = egui::Slider::new(&mut slider_val, 50.0..=26000.0)
-                                .step_by(50.0)
-                                .vertical()
-                                .show_value(false);
-
-                            let slider_resp = ui.add_sized([col_width - 10.0, 110.0], slider);
-                            if slider_resp.changed() {
-                                let new_dpi = clamp_dpi(slider_val as u32);
-                                sensor.dpi_stages[i] = new_dpi;
-                                if i == active_idx {
-                                    self.custom_input = format!("{}", new_dpi);
-                                }
-                                if let Some(buf) = self.text_buffers.get_mut(i) {
-                                    *buf = format!("{}", new_dpi);
-                                }
-                            }
-                            if slider_resp.drag_stopped() {
-                                self.pending_apply = true;
-                            }
-
-                            // Min indicator
-                            ui.label(egui::RichText::new("50").size(9.0).color(COLOR_TEXT_MUTED));
-
-                            ui.add_space(2.0);
-
-                            // Fine-tuning buttons (-50 / +50)
-                            ui.horizontal(|ui| {
-                                if ui.small_button("-").on_hover_text("-50 DPI").clicked() {
-                                    let new_dpi = clamp_dpi(sensor.dpi_stages[i].saturating_sub(50));
-                                    sensor.dpi_stages[i] = new_dpi;
-                                    if i == active_idx {
-                                        self.custom_input = format!("{}", new_dpi);
-                                    }
+                            if slider_resp.dragged() || slider_resp.clicked() {
+                                if let Some(pointer_pos) = slider_resp.interact_pointer_pos() {
+                                    let new_norm = 1.0 - ((pointer_pos.y - track_top) / usable_track_h).clamp(0.0, 1.0);
+                                    let calc_dpi = 50.0 + new_norm * (26000.0 - 50.0);
+                                    let clamped = clamp_dpi(calc_dpi.round() as u32);
+                                    sensor.dpi_stages[i] = clamped;
                                     if let Some(buf) = self.text_buffers.get_mut(i) {
-                                        *buf = format!("{}", new_dpi);
-                                    }
-                                    self.pending_apply = true;
-                                }
-                                if ui.small_button("+").on_hover_text("+50 DPI").clicked() {
-                                    let new_dpi = clamp_dpi((sensor.dpi_stages[i] + 50).min(26000));
-                                    sensor.dpi_stages[i] = new_dpi;
-                                    if i == active_idx {
-                                        self.custom_input = format!("{}", new_dpi);
-                                    }
-                                    if let Some(buf) = self.text_buffers.get_mut(i) {
-                                        *buf = format!("{}", new_dpi);
-                                    }
-                                    self.pending_apply = true;
-                                }
-                            });
-
-                            ui.add_space(4.0);
-
-                            // Editable DPI Text Box with high-contrast styling
-                            if let Some(buf) = self.text_buffers.get_mut(i) {
-                                let edit_box = egui::Frame::none()
-                                    .fill(Color32::from_rgb(0x18, 0x18, 0x18))
-                                    .stroke(Stroke::new(1.0_f32, if is_active { COLOR_ACCENT_RED } else { COLOR_BORDER }))
-                                    .rounding(3.0)
-                                    .inner_margin(Vec2::new(2.0, 1.0))
-                                    .show(ui, |ui| {
-                                        ui.add_sized(
-                                            [col_width - 8.0, 20.0],
-                                            egui::TextEdit::singleline(buf)
-                                                .font(egui::FontId::monospace(10.5))
-                                                .desired_width(col_width - 8.0)
-                                                .vertical_align(egui::Align::Center),
-                                        )
-                                    });
-
-                                let text_edit = edit_box.inner;
-                                let is_focused = text_edit.has_focus();
-                                let enter = is_focused && ui.input(|i| i.key_pressed(egui::Key::Enter));
-
-                                if text_edit.lost_focus() || enter {
-                                    if let Ok(parsed) = buf.trim().parse::<u32>() {
-                                        let clamped = clamp_dpi(parsed);
-                                        sensor.dpi_stages[i] = clamped;
                                         *buf = format!("{}", clamped);
-                                        if i == active_idx {
-                                            self.custom_input = format!("{}", clamped);
+                                    }
+                                    norm = ((clamped as f32 - 50.0) / (26000.0 - 50.0)).clamp(0.0, 1.0);
+                                }
+                            }
+
+                            // Thumb Y position
+                            let thumb_y = track_bottom - (norm * usable_track_h);
+
+                            // Draw full track background
+                            let track_rect = Rect::from_min_max(
+                                Pos2::new(track_x - track_w / 2.0, track_top),
+                                Pos2::new(track_x + track_w / 2.0, track_bottom),
+                            );
+                            painter.rect_filled(
+                                track_rect,
+                                Rounding::same(track_w / 2.0),
+                                Color32::from_rgb(0x28, 0x28, 0x28),
+                            );
+
+                            // Draw active red filled track from bottom up to thumb
+                            let fill_rect = Rect::from_min_max(
+                                Pos2::new(track_x - track_w / 2.0, thumb_y),
+                                Pos2::new(track_x + track_w / 2.0, track_bottom),
+                            );
+                            painter.rect_filled(
+                                fill_rect,
+                                Rounding::same(track_w / 2.0),
+                                COLOR_ACCENT_RED,
+                            );
+
+                            // Draw white circular thumb knob
+                            let thumb_center = Pos2::new(track_x, thumb_y);
+                            painter.circle_filled(
+                                thumb_center,
+                                thumb_radius,
+                                Color32::from_rgb(0xEA, 0xEA, 0xEA),
+                            );
+                            painter.circle_stroke(
+                                thumb_center,
+                                thumb_radius,
+                                Stroke::new(1.0, Color32::from_rgb(0x88, 0x88, 0x88)),
+                            );
+
+                            ui.add_space(3.0);
+
+                            // 3. Bottom label: 50
+                            ui.vertical_centered(|ui| {
+                                ui.label(
+                                    egui::RichText::new("50")
+                                        .size(9.5)
+                                        .color(COLOR_TEXT_MUTED),
+                                );
+                            });
+
+                            ui.add_space(4.0);
+
+                            // 4. Editable DPI Text Box
+                            // The user can click directly and type any value (e.g. 800 -> 900)
+                            ui.vertical_centered(|ui| {
+                                if let Some(buf) = self.text_buffers.get_mut(i) {
+                                    let box_w = (col_w - 6.0).clamp(32.0, 46.0);
+                                    let edit_resp = ui.add_sized(
+                                        Vec2::new(box_w, 20.0),
+                                        egui::TextEdit::singleline(buf)
+                                            .font(egui::FontId::proportional(11.0))
+                                            .desired_width(box_w)
+                                            .horizontal_align(egui::Align::Center)
+                                            .vertical_align(egui::Align::Center),
+                                    );
+
+                                    let is_focused = edit_resp.has_focus();
+                                    let enter_pressed = is_focused && ui.input(|inp| inp.key_pressed(egui::Key::Enter));
+
+                                    if edit_resp.lost_focus() || enter_pressed {
+                                        if let Ok(val) = buf.trim().parse::<u32>() {
+                                            let clamped = clamp_dpi(val);
+                                            sensor.dpi_stages[i] = clamped;
+                                            *buf = format!("{}", clamped);
+                                        } else {
+                                            *buf = format!("{}", sensor.dpi_stages[i]);
                                         }
-                                        self.pending_apply = true;
-                                    } else {
+                                    } else if !is_focused {
+                                        // Keep synchronized when not typing
                                         *buf = format!("{}", sensor.dpi_stages[i]);
                                     }
-                                } else if !is_focused {
-                                    *buf = format!("{}", sensor.dpi_stages[i]);
                                 }
-                            }
+                            });
+
+                            ui.add_space(5.0);
+
+                            // 5. Radio Indicator Dot
+                            // Clicking the dot selects this stage as active DPI
+                            ui.vertical_centered(|ui| {
+                                let (dot_rect, dot_resp) = ui.allocate_exact_size(
+                                    Vec2::new(col_w, 14.0),
+                                    egui::Sense::click(),
+                                );
+
+                                if dot_resp.clicked() {
+                                    sensor.active_stage = i;
+                                }
+
+                                let dot_painter = ui.painter_at(dot_rect);
+                                let dot_center = dot_rect.center();
+
+                                if is_active {
+                                    // Solid bright red active dot with subtle glow
+                                    dot_painter.circle_filled(
+                                        dot_center,
+                                        5.5,
+                                        Color32::from_rgba_premultiplied(226, 33, 28, 70),
+                                    );
+                                    dot_painter.circle_filled(
+                                        dot_center,
+                                        4.5,
+                                        COLOR_ACCENT_RED,
+                                    );
+                                } else {
+                                    // Inactive dark charcoal dot with subtle border
+                                    dot_painter.circle_filled(
+                                        dot_center,
+                                        4.0,
+                                        Color32::from_rgb(0x1E, 0x1E, 0x1E),
+                                    );
+                                    dot_painter.circle_stroke(
+                                        dot_center,
+                                        4.0,
+                                        Stroke::new(1.0, Color32::from_rgb(0x35, 0x35, 0x35)),
+                                    );
+                                }
+                            });
                         });
                     }
                 });
 
                 ui.add_space(10.0);
 
-                // Apply DPI Button
-                if ui
-                    .add_sized(
-                        [ui.available_width(), 28.0],
+                // 6. Centered Apply Button
+                ui.vertical_centered(|ui| {
+                    let apply_btn = ui.add_sized(
+                        Vec2::new(72.0, 24.0),
                         egui::Button::new(
-                            egui::RichText::new("Apply DPI Settings")
-                                .color(Color32::WHITE)
-                                .strong(),
+                            egui::RichText::new("Apply")
+                                .color(COLOR_TEXT_PRIMARY)
+                                .size(11.5),
                         )
-                        .fill(COLOR_ACCENT_RED),
-                    )
-                    .clicked()
-                {
-                    self.pending_apply = true;
-                }
+                        .fill(Color32::from_rgb(0x2A, 0x2A, 0x2A))
+                        .stroke(Stroke::new(1.0, COLOR_HEADER_BORDER)),
+                    );
+
+                    if apply_btn.clicked() {
+                        // Commit any text box inputs
+                        for (idx, buf) in self.text_buffers.iter_mut().enumerate() {
+                            if let Ok(val) = buf.trim().parse::<u32>() {
+                                let clamped = clamp_dpi(val);
+                                if idx < sensor.dpi_stages.len() {
+                                    sensor.dpi_stages[idx] = clamped;
+                                }
+                                *buf = format!("{}", clamped);
+                            }
+                        }
+                        self.pending_apply = true;
+                    }
+                });
             });
     }
 }

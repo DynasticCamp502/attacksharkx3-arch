@@ -36,8 +36,8 @@ pub struct SensorConfig {
 impl Default for SensorConfig {
     fn default() -> Self {
         Self {
-            dpi_stages: vec![800, 1600, 2400, 3200, 6400, 26000],
-            active_stage: 1, // 1600 DPI default
+            dpi_stages: vec![800, 1600, 2400, 3200, 5000, 26000],
+            active_stage: 0, // 800 DPI default
             lod: LiftOffDistance::TwoMm,
             ripple_control: false,
             angle_snap: false,
