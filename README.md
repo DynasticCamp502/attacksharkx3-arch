@@ -6,8 +6,6 @@
 
 Uma implementação nativa, independente e open source em **Rust** para configuração completa do mouse **Attack Shark X3** no Linux, sem depender de Wine ou de softwares proprietários Windows.
 
-Desenvolvido a partir de engenharia reversa sistemática do software oficial Windows (`ATTACK SHARK X3 SOFT.exe`) com auxílio do **REA (Reverse Engineer Anything)** e validação contra o protocolo HID de hardware.
-
 ---
 
 ## 🚀 Funcionalidades
