@@ -6,9 +6,12 @@
 
 Uma implementação nativa, independente e open source em **Rust** para configuração completa do mouse **Attack Shark X3** no Linux, sem depender de Wine ou de softwares proprietários Windows.
 
+
+![preview](docs/preview.png)
+
 ---
 
-## 🚀 Funcionalidades
+## Funcionalidades
 
 - **Configuração de DPI**:
   - Ajuste de estágios de DPI (50 a 26.000 DPI em passos de 50).
@@ -40,7 +43,7 @@ Uma implementação nativa, independente e open source em **Rust** para configur
 
 ---
 
-## 🛠️ Instalação e Execução
+## Instalação e Execução
 
 ### 1. Pré-requisitos (Fedora / Ubuntu / Debian / Arch)
 
@@ -78,7 +81,7 @@ cargo build --release
 
 ---
 
-## 📦 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 attacksharkx3-linux/
@@ -124,7 +127,7 @@ attacksharkx3-linux/
 
 ---
 
-## 🧪 Testes Automatizados
+## Testes Automatizados
 
 O projeto inclui testes de unidade e integração que validam cada byte dos pacotes construídos contra capturas reais do software de referência:
 
@@ -134,6 +137,6 @@ cargo test
 
 ---
 
-## 📄 Licença
+## Licença
 
 Distribuído sob a licença [MIT](LICENSE).
