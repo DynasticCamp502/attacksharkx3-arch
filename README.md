@@ -4,48 +4,48 @@
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20(Wayland%20%2F%20X11)-blue.svg)]()
 
-Uma implementação nativa, independente e open source em **Rust** para configuração completa do mouse **Attack Shark X3** no Linux, sem depender de Wine ou de softwares proprietários Windows.
+A native, independent, and open-source **Rust** implementation for complete configuration of the **Attack Shark X3** mouse on Linux, without relying on Wine or proprietary Windows software.
 
 
 ![preview](docs/preview.png)
 
 ---
 
-## Funcionalidades
+## Features
 
-- **Configuração de DPI**:
-  - Ajuste de estágios de DPI (50 a 26.000 DPI em passos de 50).
-  - Ativação/desativação e seleção de estágio ativo.
-  - Indicadores de cor RGB individuais para cada nível de DPI.
-- **Desempenho e Sensor (PixArt PAW3395)**:
-  - Taxa de polling: 125 Hz, 250 Hz, 500 Hz e 1000 Hz.
-  - Lift-Off Distance (LOD): 1 mm e 2 mm.
-  - Tempo de resposta dos botões (Debounce): 2 a 50 ms.
+- **DPI Configuration**:
+  - DPI stages adjustment (50 to 26,000 DPI in steps of 50).
+  - Enable/disable and active stage selection.
+  - Individual RGB color indicators for each DPI level.
+- **Performance and Sensor (PixArt PAW3395)**:
+  - Polling rate: 125 Hz, 250 Hz, 500 Hz, and 1000 Hz.
+  - Lift-Off Distance (LOD): 1 mm and 2 mm.
+  - Button response time (Debounce): 2 to 50 ms.
   - Ripple Control (On/Off).
   - Angle Snapping (On/Off).
   - Motion Sync (On/Off).
-- **Gerenciamento de Energia**:
-  - Tempo de suspensão (Sleep): 0.5 a 30 minutos.
-  - Tempo de suspensão profunda (Deep Sleep): 1 a 60 minutos.
-  - Leitura do nível de bateria e voltagem em tempo real via HID.
-- **Remapeamento de Botões**:
-  - Configuração individual dos 5 botões físicos (Clique Esquerdo, Clique Direito, Clique Central, Avançar e Voltar).
-  - Funções multimídia, navegação web, ciclar DPI e atalhos customizados (combinações de teclas).
-- **Macros de Hardware**:
-  - Criação de sequências de teclas e gravação no firmware do mouse (Slot 2).
-  - Execução direta pelo hardware sem depender de injeção de software no sistema.
-- **Perfis e Persistência**:
-  - Criação, alternância, exclusão e restauração de perfis.
-  - Persistência automática em `~/.config/attack-shark-x3/config.toml`.
-- **Interface Gráfica Nativa**:
-  - Desenvolvida em `egui/eframe`, compatível com Wayland e X11 (GNOME, KDE Plasma, etc.).
-  - Reprodução visual fiel à interface original DuiLib.
+- **Power Management**:
+  - Sleep time: 0.5 to 30 minutes.
+  - Deep sleep time: 1 to 60 minutes.
+  - Real-time battery level and voltage reading via HID.
+- **Button Remapping**:
+  - Individual configuration of the 5 physical buttons (Left Click, Right Click, Middle Click, Forward, and Back).
+  - Multimedia functions, web navigation, DPI cycling, and custom shortcuts (key combinations).
+- **Hardware Macros**:
+  - Creation of key sequences and saving to the mouse firmware (Slot 2).
+  - Direct execution by hardware without relying on software injection into the system.
+- **Profiles and Persistence**:
+  - Profile creation, switching, deletion, and restoration.
+  - Automatic persistence in `~/.config/attack-shark-x3/config.toml`.
+- **Native Graphical Interface**:
+  - Built with `egui/eframe`, compatible with Wayland and X11 (GNOME, KDE Plasma, etc.).
+  - Faithful visual reproduction of the original DuiLib interface.
 
 ---
 
-## Instalação e Execução
+## Installation and Execution
 
-### 1. Pré-requisitos (Fedora / Ubuntu / Debian / Arch)
+### 1. Prerequisites (Fedora / Ubuntu / Debian / Arch)
 
 - **Fedora**:
   ```bash
@@ -60,76 +60,76 @@ Uma implementação nativa, independente e open source em **Rust** para configur
   sudo pacman -S rust hidapi
   ```
 
-### 2. Configurar Permissões (Regras Udev)
+### 2. Configure Permissions (Udev Rules)
 
-Para permitir que o aplicativo se comunique com o mouse sem precisar de `sudo`:
+To allow the application to communicate with the mouse without requiring `sudo`:
 
 ```bash
 sudo cp packaging/udev/99-attack-shark-x3.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-### 3. Compilar e Executar
+### 3. Build and Run
 
 ```bash
-# Compilar versão otimizada
+# Build optimized release version
 cargo build --release
 
-# Executar a interface gráfica
+# Run the graphical interface
 ./target/release/attack-shark-x3
 ```
 
 ---
 
-## Estrutura do Projeto
+## Project Structure
 
 ```text
 attacksharkx3-linux/
 ├── Cargo.toml
 ├── README.md
 ├── LICENSE
-├── assets/                  # Ícones e recursos visuais originais
+├── assets/                  # Original visual assets and icons
 ├── docs/
-│   ├── reverse-engineering.md  # Relatório detalhado da engenharia reversa
-│   ├── usb-protocol.md         # Especificação completa do protocolo HID
-│   └── compatibility.md        # Compatibilidade com distros e ambientes
+│   ├── reverse-engineering.md  # Detailed reverse engineering report
+│   ├── usb-protocol.md         # Complete HID protocol specification
+│   └── compatibility.md        # Compatibility with distros and environments
 ├── packaging/
-│   ├── udev/                   # Regras udev (99-attack-shark-x3.rules)
-│   ├── desktop/                # Atalho .desktop para menu do sistema
-│   ├── deb/                    # Script para gerar pacote .deb
-│   ├── rpm/                    # Arquivo spec para gerar pacote .rpm
-│   └── appimage/               # Script para gerar AppImage
+│   ├── udev/                   # Udev rules (99-attack-shark-x3.rules)
+│   ├── desktop/                # .desktop shortcut for system menu
+│   ├── deb/                    # Script to generate .deb package
+│   ├── rpm/                    # Spec file to generate .rpm package
+│   └── appimage/               # Script to generate AppImage
 ├── scripts/
-│   └── install-udev.sh         # Script auxiliar de instalação de permissões
+│   └── install-udev.sh         # Helper script for installing permissions
 ├── src/
-│   ├── main.rs                 # Ponto de entrada do executável
-│   ├── lib.rs                  # Biblioteca Rust reusável
-│   ├── app.rs                  # Loop principal da aplicação eframe
-│   ├── protocol/               # Codificação e decodificação dos pacotes HID
+│   ├── main.rs                 # Executable entry point
+│   ├── lib.rs                  # Reusable Rust library
+│   ├── app.rs                  # Main eframe application loop
+│   ├── protocol/               # Encoding and decoding of HID packets
 │   │   ├── constants.rs
-│   │   ├── checksum.rs         # Cálculo do checksum de 16 bits big-endian
-│   │   ├── sensor.rs           # Relatório 0x04 (DPI, LOD, sensor)
-│   │   ├── power.rs            # Relatório 0x05 (Timers de sono e debounce)
-│   │   ├── polling.rs          # Relatório 0x06 (Taxa de polling)
-│   │   ├── buttons.rs          # Relatório 0x08 (Mapeamento de 18 slots)
-│   │   ├── macro_upload.rs     # Relatório 0x09 (Upload de blocos de macro)
-│   │   └── battery.rs          # Relatório 0x03 (Leitura de bateria/voltagem)
-│   ├── device/                 # Detecção e comunicação HID via hidapi
-│   ├── dpi/                    # Regras de negócio e validação de DPI
-│   ├── buttons/                # Ações e remapeamento de botões
-│   ├── macros/                 # Gerenciador de macros
-│   ├── profiles/               # Gerenciador de perfis
-│   ├── config/                 # Persistência em TOML
-│   └── gui/                    # Componentes visuais egui/eframe
+│   │   ├── checksum.rs         # 16-bit big-endian checksum calculation
+│   │   ├── sensor.rs           # Report 0x04 (DPI, LOD, sensor)
+│   │   ├── power.rs            # Report 0x05 (Sleep and debounce timers)
+│   │   ├── polling.rs          # Report 0x06 (Polling rate)
+│   │   ├── buttons.rs          # Report 0x08 (18-slot mapping)
+│   │   ├── macro_upload.rs     # Report 0x09 (Macro block upload)
+│   │   └── battery.rs          # Report 0x03 (Battery/voltage reading)
+│   ├── device/                 # HID detection and communication via hidapi
+│   ├── dpi/                    # Business rules and DPI validation
+│   ├── buttons/                # Button actions and remapping
+│   ├── macros/                 # Macro manager
+│   ├── profiles/               # Profile manager
+│   ├── config/                 # TOML persistence
+│   └── gui/                    # egui/eframe visual components
 └── tests/
-    └── protocol_tests.rs       # Testes automatizados de protocolo e checksums
+    └── protocol_tests.rs       # Automated protocol and checksum tests
 ```
 
 ---
 
-## Testes Automatizados
+## Automated Tests
 
-O projeto inclui testes de unidade e integração que validam cada byte dos pacotes construídos contra capturas reais do software de referência:
+The project includes unit and integration tests that validate every byte of the constructed packets against real captures from the reference software:
 
 ```bash
 cargo test
@@ -137,6 +137,6 @@ cargo test
 
 ---
 
-## Licença
+## License
 
-Distribuído sob a licença [MIT](LICENSE).
+Distributed under the [MIT](LICENSE) license.
