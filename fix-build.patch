@@ -1,0 +1,72 @@
+diff -ruN a/packaging/desktop/attack-shark-x3.desktop b/packaging/desktop/attack-shark-x3.desktop
+--- a/packaging/desktop/attack-shark-x3.desktop	2026-10-14 16:49:52.000000000 +0300
++++ b/packaging/desktop/attack-shark-x3.desktop	2026-10-17 17:32:59.725396636 +0300
+@@ -6,6 +6,6 @@
+ Icon=attack-shark-x3
+ Terminal=false
+ Type=Application
+-Categories=Utility;Settings;HardwareSettings;
++Categories=Settings;HardwareSettings;
+ Keywords=mouse;gaming;dpi;attack;shark;x3;hid;
+ StartupWMClass=attack-shark-x3
+diff -ruN a/src/app.rs b/src/app.rs
+--- a/src/app.rs	2026-10-14 16:49:52.000000000 +0300
++++ b/src/app.rs	2026-10-17 17:32:59.722834787 +0300
+@@ -1,11 +1,11 @@
+ //! Main eframe application coordinating GUI and device communication.
+ 
+-use eframe::egui::{self, Color32, Pos2, Rect, Stroke, Vec2};
++use eframe::egui::{self, Color32, Pos2, Rect, Rounding, Stroke, Vec2};
+ use std::time::{Duration, Instant};
+-use tracing::{error, info};
++use tracing::error;
+ 
+ use crate::config::AppConfig;
+-use crate::device::{ConnectionType, DeviceManager};
++use crate::device::DeviceManager;
+ use crate::gui::*;
+ use crate::protocol::ApplyBurst;
+ 
+@@ -167,7 +167,7 @@
+                 min_painter.rect_stroke(
+                     min_rect,
+                     Rounding::same(2.0),
+-                    Stroke::new(1.0, Color32::from_rgb(0x3A, 0x3A, 0x3A)),
++                    Stroke::new(1.0_f32, Color32::from_rgb(0x3A, 0x3A, 0x3A)),
+                 );
+                 min_painter.text(
+                     min_rect.center(),
+@@ -192,7 +192,7 @@
+                 close_painter.rect_stroke(
+                     close_rect,
+                     Rounding::same(2.0),
+-                    Stroke::new(1.0, if close_hover { COLOR_ACCENT_RED_HOVER } else { Color32::from_rgb(0x3A, 0x3A, 0x3A) }),
++                    Stroke::new(1.0_f32, if close_hover { COLOR_ACCENT_RED_HOVER } else { Color32::from_rgb(0x3A, 0x3A, 0x3A) }),
+                 );
+                 close_painter.text(
+                     close_rect.center(),
+diff -ruN a/src/protocol/sensor.rs b/src/protocol/sensor.rs
+--- a/src/protocol/sensor.rs	2026-10-14 16:49:52.000000000 +0300
++++ b/src/protocol/sensor.rs	2026-10-17 17:32:59.724082837 +0300
+@@ -36,8 +36,8 @@
+ impl Default for SensorConfig {
+     fn default() -> Self {
+         Self {
+-            dpi_stages: vec![800, 1600, 2400, 3200, 5000, 26000],
+-            active_stage: 0, // 800 DPI default
++            dpi_stages: vec![800, 1600, 2400, 3200, 6400, 26000],
++            active_stage: 1, // 1600 DPI default
+             lod: LiftOffDistance::TwoMm,
+             ripple_control: false,
+             angle_snap: false,
+@@ -59,6 +59,10 @@
+ 
+ /// Build 56-byte Report 0x04 packet
+ pub fn build_sensor_report(config: &SensorConfig) -> Result<[u8; LEN_REPORT_SENSOR]> {
++    if config.dpi_stages.is_empty() {
++        bail!("DPI stages list cannot be empty");
++    }
++
+     let mut buf = [0u8; LEN_REPORT_SENSOR];
+     buf[0] = REPORT_SENSOR;
+     buf[1] = LEN_REPORT_SENSOR as u8;

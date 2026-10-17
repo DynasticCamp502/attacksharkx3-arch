@@ -1,6 +1,6 @@
-/target/
-**/*.rs.bk
-*.log
-.DS_Store
-ATTACK SHARK X3 SOFT.exe
-extracted/
+# Arch Linux packaging artifacts
+src/
+pkg/
+*.pkg.tar.zst
+*.pkg.tar.xz
+*.tar.gz

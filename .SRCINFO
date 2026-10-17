@@ -1,0 +1,24 @@
+pkgbase = attack-shark-x3
+	pkgdesc = Native Linux configuration driver and GUI for the Attack Shark X3 gaming mouse
+	pkgver = 1.0.0
+	pkgrel = 1
+	url = https://github.com/enthonyaraujo/attacksharkx3-linux
+	arch = x86_64
+	license = MIT
+	makedepends = cargo
+	depends = gcc-libs
+	depends = glibc
+	depends = hidapi
+	depends = hicolor-icon-theme
+	depends = libxkbcommon
+	depends = wayland
+	optdepends = libglvnd: OpenGL hardware acceleration support
+	optdepends = libx11: X11 display server support
+	optdepends = libxcursor: X11 cursor support
+	optdepends = libxi: X11 input support
+	source = attack-shark-x3-1.0.0.tar.gz::https://github.com/enthonyaraujo/attacksharkx3-linux/archive/refs/tags/1.0.0.tar.gz
+	source = fix-build.patch
+	sha256sums = 72a1b91c909fd841cc6cc46308d9b5eedff9140e73127315e83c45a4398e2110
+	sha256sums = 0f40a9518550b2a1c62cba606f50487183af5b2c49fbe65862e91b5daa3df81c
+
+pkgname = attack-shark-x3
