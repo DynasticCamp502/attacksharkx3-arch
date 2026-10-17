@@ -1,12 +1,12 @@
 # Maintainer: DynasticCamp502 <https://github.com/DynasticCamp502>
-# Contributor: Enthony Araujo <https://github.com/enthonyaraujo>
+# Original Author: Enthony Araujo <https://github.com/enthonyaraujo/attacksharkx3-linux>
 
 pkgname=attack-shark-x3
 pkgver=1.0.0
 pkgrel=1
 pkgdesc="Native Linux configuration driver and GUI for the Attack Shark X3 gaming mouse"
 arch=('x86_64')
-url="https://github.com/enthonyaraujo/attacksharkx3-linux"
+url="https://github.com/DynasticCamp502/attacksharkx3-arch"
 license=('MIT')
 depends=('gcc-libs' 'glibc' 'hidapi' 'hicolor-icon-theme' 'libxkbcommon' 'wayland')
 optdepends=(
@@ -15,39 +15,40 @@ optdepends=(
     'libxcursor: X11 cursor support'
     'libxi: X11 input support'
 )
-makedepends=('cargo')
-source=(
-    "$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz"
-    "fix-build.patch"
-)
-sha256sums=(
-    '72a1b91c909fd841cc6cc46308d9b5eedff9140e73127315e83c45a4398e2110'
-    '0f40a9518550b2a1c62cba606f50487183af5b2c49fbe65862e91b5daa3df81c'
-)
+makedepends=('cargo' 'git')
+source=("$pkgname::git+$url.git")
+sha256sums=('SKIP')
+
+_builddir() {
+    if [ -d "$srcdir/$pkgname" ]; then
+        echo "$srcdir/$pkgname"
+    else
+        echo "$startdir"
+    fi
+}
 
 prepare() {
-    cd "attacksharkx3-linux-$pkgver"
-    patch -Np1 -i "$srcdir/fix-build.patch"
+    cd "$(_builddir)"
     export RUSTUP_TOOLCHAIN=stable
     cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
 
 build() {
-    cd "attacksharkx3-linux-$pkgver"
+    cd "$(_builddir)"
     export RUSTUP_TOOLCHAIN=stable
     export CARGO_TARGET_DIR=target
     cargo build --frozen --release --all-targets
 }
 
 check() {
-    cd "attacksharkx3-linux-$pkgver"
+    cd "$(_builddir)"
     export RUSTUP_TOOLCHAIN=stable
     export CARGO_TARGET_DIR=target
     cargo test --frozen --all-targets
 }
 
 package() {
-    cd "attacksharkx3-linux-$pkgver"
+    cd "$(_builddir)"
 
     # Install binary executable
     install -Dm755 "target/release/attack-shark-x3" "$pkgdir/usr/bin/attack-shark-x3"

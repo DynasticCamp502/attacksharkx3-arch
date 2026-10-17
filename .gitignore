@@ -1,6 +1,8 @@
+# Rust build artifacts
+/target/
+
 # Arch Linux packaging artifacts
-src/
-pkg/
+/pkg/
 *.pkg.tar.zst
 *.pkg.tar.xz
 *.tar.gz
